@@ -1,8 +1,10 @@
-# 模型推理依赖
-torch>=2.0.0
-transformers>=4.37.0
-accelerate>=0.20.0
-safetensors>=0.3.0
+# vllm 推理服务（v0.8.5+ 支持 Qwen3ForCausalLM 架构）
+vllm>=0.8.5
 
-# vllm OpenAI 服务
-vllm>=0.4.0
+# 模型加载依赖
+transformers>=4.51.0
+safetensors>=0.4.0
+accelerate>=0.27.0
+
+# 日志
+loguru>=0.7.0

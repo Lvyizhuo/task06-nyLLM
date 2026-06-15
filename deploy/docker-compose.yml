@@ -2,28 +2,23 @@ version: "3.8"
 
 services:
   sinong-vllm:
-    image: vllm/vllm-openai:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sinong1.0-8b-vllm:latest
     container_name: sinong-vllm
     ports:
       - "8000:8000"
     volumes:
-      # 挂载本地模型文件
+      # 挂载本地模型文件（只读）
       - /data/models/Sinong1.0-8B:/app/models/Sinong1.0-8B:ro
       # 日志持久化
       - vllm-logs:/app/logs
     environment:
       - CUDA_VISIBLE_DEVICES=0
       - TZ=Asia/Shanghai
-    command: >
-      --model /app/models/Sinong1.0-8B
-      --host 0.0.0.0
-      --port 8000
-      --gpu-memory-utilization 0.9
-      --max-model-len 40960
-      --tensor-parallel-size 1
-      --trust-remote-code
-      --dtype bfloat16
-      --enforce-eager
+    # 默认单卡部署；多卡时传入 GPU 数量作为第三参数
+    command: ["/app/models/Sinong1.0-8B", "8000", "1"]
     deploy:
       resources:
         reservations:
