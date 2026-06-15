@@ -1,0 +1,13 @@
+# vllm OpenAI 服务相关依赖
+vllm>=0.4.0
+torch>=2.0.0
+transformers>=4.37.0
+
+# LangGraph 智能体相关依赖
+langchain>=0.2.0
+langchain-openai>=0.1.0
+langgraph>=0.1.0
+langchain-core>=0.2.0
+
+# 可选依赖
+python-dotenv>=1.0.0

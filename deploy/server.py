@@ -1,24 +1,22 @@
 """
-Sinong1.0-8B OpenAI-Compatible API Server
-支持两种推理后端：Transformers（本地调试）和 vLLM（生产加速）
-提供 OpenAI 兼容的 /v1/chat/completions 接口，支持流式/非流式，可直接被 LangGraph 调用
+Sinong1.0-8B OpenAI-Compatible API Server (旧版)
 
-关键说明:
-- 模型基于 Qwen3-8B 微调，使用 Qwen3 的 chat_template 和思考模式标签
-- 思考标签: <think!>...</think!>  (token 151657/151658)
-- 回答标签: <answer>...</answer>  (token 151665/151666)
-- 默认关闭思考模式 (enable_thinking=false)，避免"根据参考资料"幻觉
-- 通过 --backend transformers|vllm 切换推理后端
+⚠️ 重要提示：此文件为旧版 FastAPI 实现，已不推荐使用。
 
-使用示例:
-  # Transformers 后端（本地调试，Mac/服务器均可）
-  python server.py --model-path ./models/Sinong1.0-8B --backend transformers --device mps
+推荐使用 vllm 原生 OpenAI 服务，详见：
+- MIGRATION.md - 迁移指南
+- start_vllm.py - 新版启动脚本
+- README.md - 完整部署文档
 
-  # vLLM 后端 - 同步引擎（生产加速，需 GPU）
-  python server.py --model-path ./models/Sinong1.0-8B --backend vllm --gpu-memory-utilization 0.9
+旧版功能（仅供参考）:
+- 支持两种推理后端：Transformers（本地调试）和 vLLM（生产加速）
+- 提供 OpenAI 兼容的 /v1/chat/completions 接口
+- 支持流式/非流式调用
 
-  # vLLM 后端 - 异步引擎（推荐，流式性能更好）
-  python server.py --model-path ./models/Sinong1.0-8B --backend vllm --vllm-async
+迁移步骤:
+1. 停止此服务
+2. 运行: python start_vllm.py --model-path ./models/Sinong1.0-8B
+3. 验证: python test_service.py
 """
 
 import os
