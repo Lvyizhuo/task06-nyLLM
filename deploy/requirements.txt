@@ -1,3 +1,8 @@
-# vllm OpenAI 服务依赖
-vllm>=0.4.0
+# 模型推理依赖
 torch>=2.0.0
+transformers>=4.37.0
+accelerate>=0.20.0
+safetensors>=0.3.0
+
+# vllm OpenAI 服务
+vllm>=0.4.0
