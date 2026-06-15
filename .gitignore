@@ -1,0 +1,44 @@
+# 模型文件
+models/
+
+# 缓存文件
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.cache/
+*.egg-info/
+dist/
+build/
+*.egg
+
+# 工作区内存
+.workbuddy/memory/
+
+# 虚拟环境
+venv/
+.venv/
+env/
+.env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 日志文件
+*.log
+
+# 临时文件
+*.tmp
+*.temp
+.tmp/
+.temp/

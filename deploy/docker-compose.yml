@@ -1,0 +1,30 @@
+version: "3.8"
+
+services:
+  sinong-api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: sinong-api
+    ports:
+      - "8000:8000"
+    volumes:
+      # 挂载本地模型文件（避免在镜像中打包16GB模型）
+      - ../models/Sinong1.0-8B:/app/models/Sinong1.0-8B:ro
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - TZ=Asia/Shanghai
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s  # 模型加载需要时间
