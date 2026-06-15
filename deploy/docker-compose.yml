@@ -10,7 +10,9 @@ services:
       - "8000:8000"
     volumes:
       # 挂载本地模型文件（避免在镜像中打包16GB模型）
-      - ../models/Sinong1.0-8B:/app/models/Sinong1.0-8B:ro
+      - /data/models/Sinong1.0-8B:/app/models/Sinong1.0-8B:ro
+      # 日志持久化
+      - sinong-logs:/app/logs
     environment:
       - CUDA_VISIBLE_DEVICES=0
       - TZ=Asia/Shanghai
@@ -27,4 +29,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 120s  # 模型加载需要时间
+      start_period: 120s
+
+volumes:
+  sinong-logs:
