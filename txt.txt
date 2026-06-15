@@ -1,0 +1,2 @@
+模型下载命令：
+modelscope download --model NAULLM/Sinong1.0-32B --local_dir ./models
