@@ -1,15 +1,13 @@
 # Sinong1.0-32B vLLM 部署指南
 
-基于 vLLM 原生 OpenAI 兼容 API 部署 Sinong1.0-32B（Qwen3ForCausalLM 架构）。
+使用 vLLM 官方镜像部署 Sinong1.0-32B 模型，提供 OpenAI 兼容 API。
 
 ## 文件说明
 
 ```
 deploy/
-├── start_vllm.sh      # vLLM 启动脚本（本地 & Docker 通用）
-├── Dockerfile          # Docker 镜像构建（NVIDIA GPU + CUDA 12.4）
-├── docker-compose.yml  # Docker Compose 编排
-├── requirements.txt    # Python 依赖
+├── start_vllm.sh      # vLLM 启动脚本（本地部署用）
+├── requirements.txt    # Python 依赖（本地部署用）
 └── README.md           # 本文档
 ```
 
@@ -20,47 +18,18 @@ deploy/
 | GPU | 4 × NVIDIA A100-PCIE-40GB |
 | CUDA | 12.6（驱动 560.28.03） |
 | 模型路径 | `/root/ntt/lvyizhuo/nyLLM/models/` |
-| 项目路径 | `/root/ntt/lvyizhuo/nyLLM/` |
-
-## 模型信息
-
-| 项目 | 值 |
-|------|-----|
-| 架构 | Qwen3ForCausalLM |
-| 参数量 | 32B |
-| 精度 | bfloat16（权重约 64GB） |
-| 层数 | 64 |
-| hidden_size | 5120 |
-| max_position_embeddings | 40960 |
-| 分片数 | 14 个 safetensors |
-
-## GPU 并行策略
-
-| TP | 使用卡数 | 显存占用 | 适用场景 |
-|----|---------|---------|---------|
-| 2 | 2 × A100 40GB | ~32GB/卡 | **最低推荐**，留 8GB 余量给 KV cache |
-| 4 | 4 × A100 40GB | ~16GB/卡 | **推荐**，更大 batch/更长上下文 |
-
-> ⚠️ **TP=1 不可用**：32B BF16 约 64GB，单卡 40GB 放不下。
 
 ---
 
-## 方式一：服务器本地部署
+## 模型下载
 
 ```bash
-cd /root/ntt/lvyizhuo/nyLLM
-
-# 安装依赖
-pip install -r deploy/requirements.txt
-
-# TP=2 启动（2卡并行，最低推荐）
-bash deploy/start_vllm.sh /root/ntt/lvyizhuo/nyLLM/models 8000 2
-
-# TP=4 启动（4卡并行，推荐）
-bash deploy/start_vllm.sh /root/ntt/lvyizhuo/nyLLM/models 8000 4
+modelscope download --model NAULLM/Sinong1.0-32B --local_dir ./models
 ```
 
-## 方式二：Docker 部署
+---
+
+## Docker 部署（推荐）
 
 ### 前置条件
 
@@ -69,171 +38,104 @@ bash deploy/start_vllm.sh /root/ntt/lvyizhuo/nyLLM/models 8000 4
 nvidia-ctk --version
 
 # 若未安装：
-# curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \
-#   gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
-# curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
-#   sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
-#   tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
-# apt-get update && apt-get install -y nvidia-container-toolkit
-# systemctl restart docker
+apt-get update && apt-get install -y nvidia-container-toolkit
+systemctl restart docker
 ```
 
-### 部署步骤
+### 拉取镜像
 
 ```bash
-cd /root/ntt/lvyizhuo/nyLLM
-
-# 1. 把 deploy/ 目录上传到服务器（scp/rsync）
-# 2. 确保模型文件在 /root/ntt/lvyizhuo/nyLLM/models/ 下
-# 3. 构建并启动
-cd deploy && docker compose up -d --build
-
-# 4. 查看启动日志（首次加载模型约需 2-3 分钟）
-docker compose logs -f
-
-# 5. 验证
-curl http://localhost:8000/v1/models
+# 使用华为云镜像源（国内加速）
+docker pull swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/vllm/vllm-openai:v0.8.5
 ```
 
-### 调整并行度
-
-编辑 `docker-compose.yml` 中的 `command` 第三参数：
-
-```yaml
-# TP=2（2卡并行）
-command: ["/app/models/Sinong1.0-32B", "8000", "2"]
-
-# TP=4（4卡并行，推荐）
-command: ["/app/models/Sinong1.0-32B", "8000", "4"]
-```
-
-同时调整 `CUDA_VISIBLE_DEVICES` 只使用需要的卡：
-
-```yaml
-# TP=2 只用 GPU 0,1
-environment:
-  - CUDA_VISIBLE_DEVICES=0,1
-
-# TP=4 全部使用
-environment:
-  - CUDA_VISIBLE_DEVICES=0,1,2,3
-```
-
-### 停止 / 重启
+### 启动服务
 
 ```bash
-docker compose down        # 停止
-docker compose restart     # 重启
-docker compose logs -f     # 查看日志
+docker run -d \
+  --gpus all \
+  --name sinongLLM \
+  --shm-size=10g \
+  -e CUDA_VISIBLE_DEVICES=0,1 \
+  -p 8000:8000 \
+  -v /root/ntt/lvyizhuo/nyLLM/models:/app/models:ro \
+  swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/vllm/vllm-openai:v0.8.5 \
+  --model /app/models \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --tensor-parallel-size 2 \
+  --distributed-executor-backend mp \
+  --gpu-memory-utilization 0.9 \
+  --max-model-len 8192 \
+  --dtype bfloat16 \
+  --trust-remote-code
+```
+
+### 查看日志
+
+```bash
+docker logs -f sinongLLM
+```
+
+等待出现 `Application startup complete` 表示启动成功。
+
+### 停止/重启
+
+```bash
+docker stop sinongLLM      # 停止
+docker start sinongLLM     # 启动
+docker rm -f sinongLLM     # 删除容器
 ```
 
 ---
 
-## API 接口
-
-服务地址：`http://<服务器IP>:8000`
-
-### 健康检查
-
-```bash
-curl http://localhost:8000/health
-```
-
-### 聊天补全（非流式）
+## 测试请求
 
 ```bash
 curl http://localhost:8000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "Sinong1.0-32B",
+    "model": "/app/models",
     "messages": [
-      {"role": "system", "content": "你是农业智能助手，请直接回答问题，不要提及参考资料。"},
-      {"role": "user", "content": "小麦赤霉病怎么防治？"}
+      {
+        "role": "system",
+        "content": "你是专业农业智能助手司农Sinong，精通粮食种植、果蔬栽培、病虫害防治、畜禽养殖、农资化肥、农田管理、农业政策，回答通俗易懂，给出实操步骤，数据贴合国内北方大田种植场景。"
+      },
+      {
+        "role": "user",
+        "content": "山东潍坊地区夏玉米苗期出现叶片发黄、根部腐烂，地里积水多，是什么病害？该怎么防治，后续田间排水和施肥方案是什么？"
+      }
     ],
-    "max_tokens": 512,
-    "temperature": 0.6,
-    "stream": false
-  }'
-```
-
-### 聊天补全（流式）
-
-```bash
-curl http://localhost:8000/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "Sinong1.0-32B",
-    "messages": [{"role": "user", "content": "介绍济南"}],
-    "stream": true
-  }'
-```
-
-### 关闭思考模式
-
-在系统提示词末尾加 `/no_think`：
-
-```bash
-curl http://localhost:8000/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "Sinong1.0-32B",
-    "messages": [
-      {"role": "system", "content": "你是农业智能助手，请直接回答问题。/no_think"},
-      {"role": "user", "content": "小麦赤霉病怎么防治？"}
-    ],
-    "max_tokens": 512
+    "stream": true,
+    "temperature": 0.4,
+    "max_tokens": 1500
   }'
 ```
 
 ---
 
-## LangGraph 智能体集成
+## 启动参数说明
 
-```python
-from langchain_openai import ChatOpenAI
-
-llm = ChatOpenAI(
-    model="Sinong1.0-32B",
-    base_url="http://<服务器IP>:8000/v1",
-    api_key="not-needed",
-    temperature=0.6,
-    max_tokens=2048,
-    streaming=True,
-)
-
-# 在 LangGraph 中使用
-from langgraph.prebuilt import create_react_agent
-
-agent = create_react_agent(llm, tools=[...])
-result = agent.invoke({"messages": [("user", "小麦赤霉病怎么防治？")]})
-```
-
-流式调用：
-
-```python
-for chunk in llm.stream([("user", "你好")]):
-    print(chunk.content, end="", flush=True)
-```
+| 参数 | 值 | 说明 |
+|------|-----|------|
+| `--gpus all` | - | 让容器访问所有 GPU |
+| `--shm-size=10g` | - | 共享内存，避免 Ray/多进程问题 |
+| `-e CUDA_VISIBLE_DEVICES=0,1` | - | 指定使用 GPU 0 和 1 |
+| `--tensor-parallel-size` | 2 | 2 卡张量并行（30B 模型推荐） |
+| `--distributed-executor-backend` | mp | 使用 multiprocessing（比 Ray 稳定） |
+| `--gpu-memory-utilization` | 0.9 | GPU 显存使用率 |
+| `--max-model-len` | 8192 | 最大序列长度 |
+| `--dtype` | bfloat16 | 数据类型 |
 
 ---
-
-## 默认参数
-
-| 参数 | 值 |
-|------|-----|
-| dtype | bfloat16 |
-| max-model-len | 40960 |
-| gpu-memory-utilization | 0.9 |
-| enable-reasoning | true |
-| reasoning-parser | deepseek_r1 |
-| tensor-parallel-size | 2（默认）/ 4（推荐） |
 
 ## 故障排查
 
 | 问题 | 解决方案 |
 |------|---------|
-| 显存不足 OOM | 降低 `--max-model-len`（如 16384）或 `--gpu-memory-utilization`（如 0.8） |
-| 端口占用 | `lsof -i :8000` 查看并 `kill -9 <PID>` |
-| Docker GPU 不可用 | 确认 `nvidia-container-toolkit` 已安装并重启 Docker |
-| 模型加载慢 | 首次加载约 2-3 分钟，属正常现象 |
-| 日志 | `docker compose logs -f` 或本地启动看终端输出 |
+| CUDA 版本不兼容 | 使用 vllm v0.8.5（兼容 CUDA 12.4-12.6） |
+| transformers 不识别 qwen3 | 使用 vllm v0.8.5+（内置 transformers 4.51+） |
+| Ray 启动失败 | 添加 `--distributed-executor-backend mp` |
+| 共享内存不足 | 添加 `--shm-size=10g` |
+| GPU 不可见 | 使用 `--gpus all` + `CUDA_VISIBLE_DEVICES` |
+| 显存不足 OOM | 降低 `--max-model-len` 或 `--gpu-memory-utilization` |
