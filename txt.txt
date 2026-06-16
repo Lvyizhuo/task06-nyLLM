@@ -1,2 +1,41 @@
 模型下载命令：
 modelscope download --model NAULLM/Sinong1.0-32B --local_dir ./models
+
+vllm镜像启动命令：
+docker run -d \
+  --gpus all \
+  --name sinongLLM \
+  --shm-size=10g \
+  -e CUDA_VISIBLE_DEVICES=0,1 \
+  -p 8000:8000 \
+  -v /root/ntt/lvyizhuo/nyLLM/models:/app/models:ro \
+  swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/vllm/vllm-openai:v0.8.5 \
+  --model /app/models \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --tensor-parallel-size 2 \
+  --distributed-executor-backend mp \
+  --gpu-memory-utilization 0.9 \
+  --max-model-len 8192 \
+  --dtype bfloat16 \
+  --trust-remote-code
+
+测试请求示例：
+curl http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "/app/models",
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是专业农业智能助手司农Sinong，精通粮食种植、果蔬栽培、病虫害防治、畜禽养殖、农资化肥、农田管理、农业政策，回答通俗易懂，给出实操步骤，数据贴合国内北方大田种植场景。"
+      },
+      {
+        "role": "user",
+        "content": "山东潍坊地区夏玉米苗期出现叶片发黄、根部腐烂，地里积水多，是什么病害？该怎么防治，后续田间排水和施肥方案是什么？"
+      }
+    ],
+    "stream": true,
+    "temperature": 0.4,
+    "max_tokens": 1500
+  }'
