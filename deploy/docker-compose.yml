@@ -2,33 +2,30 @@ version: "3.8"
 
 services:
   sinong-vllm:
-    image: sinong1.0-32b-vllm:latest
+    image: vllm/vllm-openai:latest
     container_name: sinong-vllm
     ports:
       - "8000:8000"
     volumes:
-      # 挂载本地模型文件（只读）— 按实际路径修改
-      - /root/ntt/lvyizhuo/nyLLM/models:/app/models/Sinong1.0-32B:ro
+      - /root/ntt/lvyizhuo/nyLLM/models:/app/models:ro
     environment:
-      # 使用的 GPU 编号，4卡全部使用；若只用2卡改为 0,1
       - CUDA_VISIBLE_DEVICES=0,1,2,3
       - TZ=Asia/Shanghai
-    # 参数: [模型路径, 端口, TP并行数]
-    # TP=2: 2卡并行（最低推荐，单卡40GB放不下32B模型）
-    # TP=4: 4卡并行（更多显存余量，支持更大batch和更长上下文）
-    command: ["/app/models/Sinong1.0-32B", "8000", "2"]
+    command: [
+      "--model", "/app/models",
+      "--host", "0.0.0.0",
+      "--port", "8000",
+      "--tensor-parallel-size", "2",
+      "--gpu-memory-utilization", "0.9",
+      "--max-model-len", "8192",
+      "--dtype", "bfloat16",
+      "--trust-remote-code"
+    ]
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              # TP=2 用 2 张 GPU，TP=4 改为 count: 4
               count: 2
               capabilities: [gpu]
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 180s
