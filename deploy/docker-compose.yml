@@ -2,9 +2,6 @@ version: "3.8"
 
 services:
   sinong-vllm:
-    build:
-      context: .
-      dockerfile: Dockerfile
     image: sinong1.0-32b-vllm:latest
     container_name: sinong-vllm
     ports:
