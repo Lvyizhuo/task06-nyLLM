@@ -17,7 +17,7 @@ deploy/
 |------|------|
 | GPU | 4 × NVIDIA A100-PCIE-40GB |
 | CUDA | 12.6（驱动 560.28.03） |
-| 模型路径 | `/root/ntt/lvyizhuo/nyLLM/models/` |
+| 模型路径 | `./models/`（项目根目录下） |
 
 ---
 
@@ -58,7 +58,7 @@ docker run -d \
   --shm-size=10g \
   -e CUDA_VISIBLE_DEVICES=0,1 \
   -p 8000:8000 \
-  -v /root/ntt/lvyizhuo/nyLLM/models:/app/models:ro \
+  -v ./models:/app/models:ro \
   swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/vllm/vllm-openai:v0.8.5 \
   --model /app/models \
   --host 0.0.0.0 \
