@@ -1,7 +1,7 @@
-模型下载命令：
+1、模型下载命令：
 modelscope download --model NAULLM/Sinong1.0-32B --local_dir ./models
 
-vllm镜像启动命令：
+2、vllm镜像启动命令（GPU）：
 docker run -d \
   --gpus all \
   --name sinongLLM \
@@ -20,7 +20,22 @@ docker run -d \
   --dtype bfloat16 \
   --trust-remote-code
 
-测试请求示例：
+3、vllm镜像启动命令（CPU）：
+docker run -d \
+  --name sinongLLM-cpu \
+  --shm-size=20g \
+  -p 8000:8000 \
+  -v /root/ntt/lvyizhuo/nyLLM/models:/app/models:ro \
+  swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/vllm/vllm-openai-cpu:v0.19.0-x86_64 \
+  --model /app/models \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --max-model-len 8192 \
+  --dtype float32 \
+  --trust-remote-code
+
+
+4、测试请求示例：
 curl http://localhost:8000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
@@ -35,6 +50,7 @@ curl http://localhost:8000/v1/chat/completions \
         "content": "潍坊市适合种什么？"
       }
     ],
+    "stream": true,
     "temperature": 0.4,
     "max_tokens": 1500
   }'
